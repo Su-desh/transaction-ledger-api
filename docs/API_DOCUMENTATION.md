@@ -1,10 +1,11 @@
-# Transaction Ledger API — Technical Documentation (Rust Edition)
+# Transaction Ledger API - Technical Documentation (Rust Edition)
 
 A high-performance financial ledger service written in **Rust**, powered by **Axum**, **Tokio**, and **SQLite**. Built with strict ACID consistency, decimal precision, transaction immutability, and deadlock-free funds transfer.
 
-- **Base URL**: `http://localhost:3000/api/v1`
-- **Web Dashboard**: `http://localhost:3000/`
-- **Healthcheck**: `http://localhost:3000/api/v1/health`
+- **Live URL**: `https://transaction-ledger-api-1teb.onrender.com`
+- **Live Healthcheck**: `https://transaction-ledger-api-1teb.onrender.com/api/v1/health`
+- **Local Base URL**: `http://localhost:3000/api/v1`
+- **Local Dashboard**: `http://localhost:3000/`
 
 ---
 
@@ -25,8 +26,8 @@ All error responses adhere to a consistent JSON structure:
 ### HTTP Status Code Mapping
 | Status Code | Code String | Trigger Scenario |
 | :--- | :--- | :--- |
-| `200 OK` | — | Successful query (balance, history, integrity) |
-| `201 Created` | — | Account created, transaction posted, transfer executed |
+| `200 OK` | - | Successful query (balance, history, integrity) |
+| `201 Created` | - | Account created, transaction posted, transfer executed |
 | `400 Bad Request` | `VALIDATION_ERROR` | Empty name, non-positive amount, >2 decimal places, or client trying to set initial balance |
 | `404 Not Found` | `NOT_FOUND` | Account ID does not exist |
 | `405 Method Not Allowed` | `METHOD_NOT_ALLOWED` | Attempting `PUT`, `PATCH`, or `DELETE` on immutable transactions |
@@ -61,7 +62,7 @@ Creates a new ledger account. System-generates `id` (UUIDv4) and `created_at` ti
   ```
 
 ### 1.2 Get Account Balance
-Retrieves current account balance in $O(1)$ time.
+Retrieves current account balance in O(1) time.
 
 - **Endpoint**: `GET /api/v1/accounts/:accountId/balance`
 - **Response (200 OK)**:
@@ -77,7 +78,7 @@ Retrieves current account balance in $O(1)$ time.
   ```
 
 ### 1.3 Verify Invariant Integrity
-Audits whether `account.balance` strictly equals $\sum \text{Credits} - \sum \text{Debits}$ from raw historical transactions.
+Audits whether `account.balance` strictly equals the sum of credits minus the sum of debits from raw historical transactions.
 
 - **Endpoint**: `GET /api/v1/accounts/:accountId/integrity`
 - **Response (200 OK)**:
@@ -158,8 +159,8 @@ Atomically applies a credit or debit to the account and mutates the cached balan
 
 ### 2.3 Transaction Immutability
 Transactions can never be modified or deleted.
-- `PUT /api/v1/accounts/:accountId/transactions/:id` $\rightarrow$ `405 Method Not Allowed`
-- `DELETE /api/v1/accounts/:accountId/transactions/:id` $\rightarrow$ `405 Method Not Allowed`
+- `PUT /api/v1/accounts/:accountId/transactions/:id` -> `405 Method Not Allowed`
+- `DELETE /api/v1/accounts/:accountId/transactions/:id` -> `405 Method Not Allowed`
 
 ---
 
@@ -212,3 +213,28 @@ Atomically transfers money from one account to another using double-entry linked
     }
   }
   ```
+
+---
+
+## 4. Quickstart cURL Snippets
+
+```bash
+# Set host (Live Render deployment or http://localhost:3000)
+HOST="https://transaction-ledger-api-1teb.onrender.com"
+
+# Create Account
+curl -X POST "$HOST/api/v1/accounts" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Sudesh Kumar"}'
+
+# Post Credit
+curl -X POST "$HOST/api/v1/accounts/<ACCOUNT_ID>/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "credit", "amount": 100, "reference_id": "REF-001"}'
+
+# Check Balance
+curl "$HOST/api/v1/accounts/<ACCOUNT_ID>/balance"
+
+# Check Invariant Integrity
+curl "$HOST/api/v1/accounts/<ACCOUNT_ID>/integrity"
+```
