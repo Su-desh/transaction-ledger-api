@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction Ledger - Rust Engine & Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+    }
+    .badge {
+      background: #431407;
+      color: #fb923c;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #f9731644;
+    }
+    .badge-agency {
+      background: #312e81;
+      color: #a5b4fc;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #6366f144;
+    }
+    .links a {
+      color: #fdba74;
+      text-decoration: none;
+      margin-left: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .links a:hover { text-decoration: underline; }
+    .grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: #0d131f;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 14px;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+    }
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: var(--primary-hover); }
+    button.btn-outline {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+    button.btn-outline:hover { background: #1f293d; }
+    .account-item {
+      padding: 12px;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #0f172a;
+    }
+    .account-item:hover, .account-item.active {
+      border-color: var(--primary);
+      background: #1e293b;
+    }
+    .account-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .account-balance {
+      font-family: var(--mono);
+      color: var(--success);
+      font-size: 14px;
+    }
+    .account-id {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+    .active-account-banner {
+      background: linear-gradient(135deg, #431407 0%, #1e1e38 100%);
+      border: 1px solid #f9731644;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .banner-title { font-size: 13px; color: #fdba74; text-transform: uppercase; letter-spacing: 0.5px; }
+    .banner-name { font-size: 20px; font-weight: 700; margin-top: 2px; }
+    .banner-balance { font-size: 28px; font-weight: 700; font-family: var(--mono); color: #34d399; }
+    .filters {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .filters select { width: auto; margin-bottom: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 10px;
+      background: #0d131f;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 500;
+    }
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #1f2937;
+    }
+    tr:hover td { background: #162032; }
+    .badge-credit {
+      background: #064e3b;
+      color: #34d399;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .badge-debit {
+      background: #7f1d1d;
+      color: #f87171;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .mono { font-family: var(--mono); }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: #1f2937;
+      color: white;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 100;
+      font-size: 14px;
+      max-width: 400px;
+    }
+    .toast.success { background: #065f46; border: 1px solid #059669; }
+    .toast.error { background: #991b1b; border: 1px solid #dc2626; }
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .pagination-controls button {
+      width: auto;
+      padding: 6px 12px;
+      margin-left: 6px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h1 style="font-size: 22px; font-weight: 700;">Rust Transaction Ledger Engine</h1>
+          <span class="badge">Axum + Tokio + SQLite</span>
+          <span class="badge-agency">Walnut Folks Group</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+          Ultra-high-performance financial ledger built in Rust with ACID transactions, zero floating-point rounding errors, and atomic transfers
+        </p>
+      </div>
+      <div class="links">
+        <a href="/api/v1/health" target="_blank">Health Check</a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left Column: Accounts & Create -->
+      <div>
+        <div class="card">
+          <h3>Create New Account</h3>
+          <form id="createAccountForm">
+            <label>Account Holder Name</label>
+            <input type="text" id="accName" placeholder="e.g. Sudesh Kumar" required>
+            <button type="submit">+ Create Account (Balance: 0.00)</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>
+            Accounts
+            <span id="accountCount" style="font-size: 12px; color: var(--text-muted);">0</span>
+          </h3>
+          <div id="accountsList" style="max-height: 400px; overflow-y: auto;">
+            <p style="color: var(--text-muted); font-size: 13px;">Loading accounts...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Transfer Funds (Atomic)</h3>
+          <form id="transferForm">
+            <label>Destination Account</label>
+            <select id="transferDestAccount" required>
+              <option value="">Select destination account...</option>
+            </select>
+            <label>Amount</label>
+            <input type="number" id="transferAmount" step="0.01" min="0.01" placeholder="50.00" required>
+            <label>Reference ID</label>
+            <input type="text" id="transferRef" placeholder="TRF-001" required>
+            <button type="submit" style="background: #ea580c;">Execute Atomic Transfer</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right Column: Active Account Ledger & Actions -->
+      <div>
+        <div class="active-account-banner" id="activeAccountBanner">
+          <div>
+            <div class="banner-title">Active Account</div>
+            <div class="banner-name" id="activeAccountName">Select an account</div>
+            <div class="account-id" id="activeAccountId" style="font-size: 12px; color: #cbd5e1; margin-top: 4px;"></div>
+          </div>
+          <div style="text-align: right;">
+            <div class="banner-title">Current Balance</div>
+            <div class="banner-balance" id="activeAccountBalance">0.00</div>
+          </div>
+        </div>
+
+        <div class="card" id="txActionCard">
+          <h3>Post Transaction</h3>
+          <form id="transactionForm">
+            <div style="display: grid; grid-template-columns: 140px 1fr 1fr; gap: 12px;">
+              <div>
+                <label>Type</label>
+                <select id="txType">
+                  <option value="credit">Credit (+)</option>
+                  <option value="debit">Debit (-)</option>
+                </select>
+              </div>
+              <div>
+                <label>Amount</label>
+                <input type="number" id="txAmount" step="0.01" min="0.01" placeholder="100.00" required>
+              </div>
+              <div>
+                <label>Reference ID (Unique)</label>
+                <input type="text" id="txRef" placeholder="TX-REF-001" required>
+              </div>
+            </div>
+            <label>Description (Optional)</label>
+            <input type="text" id="txDesc" placeholder="e.g. Salary deposit or Vendor Payout">
+            <button type="submit">Submit Transaction</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin-bottom: 0;">Transaction History</h3>
+            <div class="filters">
+              <select id="filterType" onchange="loadTransactions(1)">
+                <option value="">All Transactions</option>
+                <option value="credit">Credits Only</option>
+                <option value="debit">Debits Only</option>
+              </select>
+              <button class="btn-outline" style="width: auto; padding: 6px 12px;" onclick="verifyIntegrity()">Verify Invariant</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Reference ID</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody id="txTableBody">
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    Select an account to view transactions
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination-bar" id="paginationBar">
+            <span id="pageInfo">Page 1 of 1 (0 total)</span>
+            <div class="pagination-controls">
+              <button class="btn-outline" id="prevBtn" onclick="prevPage()" disabled>Previous</button>
+              <button class="btn-outline" id="nextBtn" onclick="nextPage()" disabled>Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let activeAccount = null;
+    let accounts = [];
+    let currentPage = 1;
+    let totalPages = 1;
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${isError ? 'error' : 'success'}`;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    async function loadAccounts() {
+      try {
+        const res = await fetch('/api/v1/accounts');
+        const json = await res.json();
+        accounts = json.data || [];
+        document.getElementById('accountCount').textContent = accounts.length;
+        renderAccountsList();
+        updateTransferDropdown();
+        if (!activeAccount && accounts.length > 0) {
+          selectAccount(accounts[0].id);
+        } else if (activeAccount) {
+          const fresh = accounts.find(a => a.id === activeAccount.id);
+          if (fresh) selectAccount(fresh.id);
+        }
+      } catch (err) {
+        showToast('Failed to load accounts: ' + err.message, true);
+      }
+    }
+
+    function renderAccountsList() {
+      const list = document.getElementById('accountsList');
+      if (accounts.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No accounts yet. Create one above!</p>';
+        return;
+      }
+      list.innerHTML = accounts.map(a => `
+        <div class="account-item ${activeAccount && activeAccount.id === a.id ? 'active' : ''}" onclick="selectAccount('${a.id}')">
+          <div class="account-header">
+            <span>${escapeHtml(a.name)}</span>
+            <span class="account-balance">${parseFloat(a.balance).toFixed(2)}</span>
+          </div>
+          <div class="account-id">${a.id}</div>
+        </div>
+      `).join('');
+    }
+
+    function updateTransferDropdown() {
+      const select = document.getElementById('transferDestAccount');
+      const otherAccounts = accounts.filter(a => !activeAccount || a.id !== activeAccount.id);
+      select.innerHTML = '<option value="">Select destination account...</option>' + 
+        otherAccounts.map(a => `<option value="${a.id}">${escapeHtml(a.name)} (₹${parseFloat(a.balance).toFixed(2)})</option>`).join('');
+    }
+
+    function selectAccount(id) {
+      activeAccount = accounts.find(a => a.id === id);
+      if (!activeAccount) return;
+      document.getElementById('activeAccountName').textContent = activeAccount.name;
+      document.getElementById('activeAccountId').textContent = 'ID: ' + activeAccount.id;
+      document.getElementById('activeAccountBalance').textContent = parseFloat(activeAccount.balance).toFixed(2);
+      renderAccountsList();
+      updateTransferDropdown();
+      loadTransactions(1);
+    }
+
+    async function loadTransactions(page = 1) {
+      if (!activeAccount) return;
+      currentPage = page;
+      const type = document.getElementById('filterType').value;
+      let url = `/api/v1/accounts/${activeAccount.id}/transactions?page=${page}&limit=5`;
+      if (type) url += `&type=${type}`;
+
+      try {
+        const res = await fetch(url);
+        const json = await res.json();
+        const txs = json.data || [];
+        const p = json.pagination || { current_page: 1, total_pages: 1, total_records: 0 };
+        totalPages = p.total_pages;
+
+        const tbody = document.getElementById('txTableBody');
+        if (txs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No transactions found</td></tr>';
+        } else {
+          tbody.innerHTML = txs.map(t => `
+            <tr>
+              <td class="mono" style="font-size: 11px;">${new Date(t.created_at).toLocaleString()}</td>
+              <td><span class="badge-${t.type}">${t.type.toUpperCase()}</span></td>
+              <td class="mono" style="font-weight: 600; color: ${t.type === 'credit' ? 'var(--success)' : 'var(--danger)'}">
+                ${t.type === 'credit' ? '+' : '-'}${parseFloat(t.amount).toFixed(2)}
+              </td>
+              <td class="mono" style="font-size: 12px;">${escapeHtml(t.reference_id)}</td>
+              <td>${escapeHtml(t.description || '-')}</td>
+            </tr>
+          `).join('');
+        }
+
+        document.getElementById('pageInfo').textContent = `Page ${p.current_page} of ${p.total_pages} (${p.total_records} total records)`;
+        document.getElementById('prevBtn').disabled = p.current_page <= 1;
+        document.getElementById('nextBtn').disabled = p.current_page >= p.total_pages;
+      } catch (err) {
+        showToast('Error fetching transactions: ' + err.message, true);
+      }
+    }
+
+    function prevPage() { if (currentPage > 1) loadTransactions(currentPage - 1); }
+    function nextPage() { if (currentPage < totalPages) loadTransactions(currentPage + 1); }
+
+    document.getElementById('createAccountForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('accName').value;
+      try {
+        const res = await fetch('/api/v1/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message || 'Failed to create');
+        showToast(`Account "${json.data.name}" created!`);
+        document.getElementById('accName').value = '';
+        await loadAccounts();
+        selectAccount(json.data.id);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeAccount) return showToast('Please select an account first', true);
+
+      const type = document.getElementById('txType').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const reference_id = document.getElementById('txRef').value;
+      const description = document.getElementById('txDesc').value;
+
+      try {
+        const res = await fetch(`/api/v1/accounts/${activeAccount.id}/transactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, amount, reference_id, description })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message || 'Transaction failed');
+        showToast(`${type.toUpperCase()} of ₹${amount.toFixed(2)} applied!`);
+        document.getElementById('txAmount').value = '';
+        document.getElementById('txRef').value = '';
+        document.getElementById('txDesc').value = '';
+        await loadAccounts();
+        loadTransactions(1);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
+    document.getElementById('transferForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeAccount) return showToast('Please select a source account', true);
+
+      const destId = document.getElementById('transferDestAccount').value;
+      const amount = parseFloat(document.getElementById('transferAmount').value);
+      const reference_id = document.getElementById('transferRef').value;
+
+      try {
+        const res = await fetch('/api/v1/transfers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_account_id: activeAccount.id,
+            destination_account_id: destId,
+            amount,
+            reference_id,
+            description: 'Direct P2P Transfer'
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message || 'Transfer failed');
+        showToast(`Successfully transferred ₹${amount.toFixed(2)} atomically!`);
+        document.getElementById('transferAmount').value = '';
+        document.getElementById('transferRef').value = '';
+        await loadAccounts();
+        loadTransactions(1);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
+    async function verifyIntegrity() {
+      if (!activeAccount) return;
+      try {
+        const res = await fetch(`/api/v1/accounts/${activeAccount.id}/integrity`);
+        const json = await res.json();
+        if (json.data?.isConsistent) {
+          showToast(`Invariant Verified! Account Balance (${json.data.accountBalance}) matches Ledger Sum (${json.data.ledgerBalance})`);
+        } else {
+          showToast(`Discrepancy detected!`, true);
+        }
+      } catch (err) {
+        showToast('Error verifying integrity: ' + err.message, true);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('txRef').addEventListener('focus', function() {
+      if (!this.value) this.value = 'TX-' + Math.floor(100000 + Math.random() * 900000);
+    });
+    document.getElementById('transferRef').addEventListener('focus', function() {
+      if (!this.value) this.value = 'TRF-' + Math.floor(100000 + Math.random() * 900000);
+    });
+
+    loadAccounts();
+  </script>
+</body>
+</html>

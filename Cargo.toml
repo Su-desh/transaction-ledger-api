@@ -1,0 +1,26 @@
+[package]
+name = "transaction-ledger-api"
+version = "1.0.0"
+edition = "2021"
+authors = ["Sudesh Kumar <sudesh1428@gmail.com>"]
+description = "High-performance Transaction Ledger API in Rust with ACID atomicity, strict balance integrity, and money transfers"
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = { version = "1.36", features = ["serde-float", "serde-str", "serde"] }
+rust_decimal_macros = "1.36"
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "uuid"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+http = "1.1"
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
