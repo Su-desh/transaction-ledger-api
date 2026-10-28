@@ -39,7 +39,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("====================================================");
     println!("Rust Transaction Ledger API running on port {}", port);
     println!("Web Dashboard Playground: http://localhost:{}", port);
-    println!("Healthcheck:              http://localhost:{}/api/v1/health", port);
+    println!(
+        "Healthcheck:              http://localhost:{}/api/v1/health",
+        port
+    );
     println!("====================================================");
 
     info!("Server listening on {}", addr);

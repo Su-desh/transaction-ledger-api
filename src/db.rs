@@ -23,7 +23,7 @@ pub fn init_db(db_path: Option<&str>) -> Result<DbPool> {
     };
 
     conn.pragma_update(None, "foreign_keys", "ON")?;
-    
+
     // Only enable WAL for file-based DBs
     if db_path != Some(":memory:") {
         conn.pragma_update(None, "journal_mode", "WAL")?;

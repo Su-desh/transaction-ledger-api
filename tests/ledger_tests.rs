@@ -22,7 +22,8 @@ async fn parse_response(response: axum::response::Response) -> (StatusCode, Valu
     let body: Value = if bytes.is_empty() {
         json!(null)
     } else {
-        serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({ "raw": String::from_utf8_lossy(&bytes) }))
+        serde_json::from_slice(&bytes)
+            .unwrap_or_else(|_| json!({ "raw": String::from_utf8_lossy(&bytes) }))
     };
     (status, body)
 }
@@ -56,7 +57,9 @@ async fn test_reject_client_initial_balance() {
         .method(Method::POST)
         .uri("/api/v1/accounts")
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "name": "Hacker", "balance": 1000 }).to_string()))
+        .body(Body::from(
+            json!({ "name": "Hacker", "balance": 1000 }).to_string(),
+        ))
         .unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
@@ -337,7 +340,10 @@ async fn test_pagination_and_sorting() {
     // Page 1, limit 2 (must return 2 records, latest first)
     let p1_req = Request::builder()
         .method(Method::GET)
-        .uri(format!("/api/v1/accounts/{}/transactions?page=1&limit=2", account_id))
+        .uri(format!(
+            "/api/v1/accounts/{}/transactions?page=1&limit=2",
+            account_id
+        ))
         .body(Body::empty())
         .unwrap();
     let (p1_status, p1_body) = parse_response(app.clone().oneshot(p1_req).await.unwrap()).await;
@@ -370,7 +376,9 @@ async fn test_money_transfer_bonus() {
         .method(Method::POST)
         .uri(format!("/api/v1/accounts/{}/transactions", id_a))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "type": "credit", "amount": 100, "reference_id": "INIT-A" }).to_string()))
+        .body(Body::from(
+            json!({ "type": "credit", "amount": 100, "reference_id": "INIT-A" }).to_string(),
+        ))
         .unwrap();
     parse_response(app.clone().oneshot(cr_a).await.unwrap()).await;
 
@@ -388,7 +396,9 @@ async fn test_money_transfer_bonus() {
         .method(Method::POST)
         .uri(format!("/api/v1/accounts/{}/transactions", id_b))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "type": "credit", "amount": 50, "reference_id": "INIT-B" }).to_string()))
+        .body(Body::from(
+            json!({ "type": "credit", "amount": 50, "reference_id": "INIT-B" }).to_string(),
+        ))
         .unwrap();
     parse_response(app.clone().oneshot(cr_b).await.unwrap()).await;
 
@@ -410,15 +420,26 @@ async fn test_money_transfer_bonus() {
     let (trf_status, trf_body) = parse_response(app.clone().oneshot(trf_req).await.unwrap()).await;
     assert_eq!(trf_status, StatusCode::CREATED);
     assert_eq!(trf_body["data"]["source_balance"].as_f64().unwrap(), 70.0);
-    assert_eq!(trf_body["data"]["destination_balance"].as_f64().unwrap(), 80.0);
+    assert_eq!(
+        trf_body["data"]["destination_balance"].as_f64().unwrap(),
+        80.0
+    );
 
     // Verify Account A balance
-    let bal_a = Request::builder().method(Method::GET).uri(format!("/api/v1/accounts/{}/balance", id_a)).body(Body::empty()).unwrap();
+    let bal_a = Request::builder()
+        .method(Method::GET)
+        .uri(format!("/api/v1/accounts/{}/balance", id_a))
+        .body(Body::empty())
+        .unwrap();
     let (_, ba) = parse_response(app.clone().oneshot(bal_a).await.unwrap()).await;
     assert_eq!(ba["data"]["balance"].as_f64().unwrap(), 70.0);
 
     // Verify Account B balance
-    let bal_b = Request::builder().method(Method::GET).uri(format!("/api/v1/accounts/{}/balance", id_b)).body(Body::empty()).unwrap();
+    let bal_b = Request::builder()
+        .method(Method::GET)
+        .uri(format!("/api/v1/accounts/{}/balance", id_b))
+        .body(Body::empty())
+        .unwrap();
     let (_, bb) = parse_response(app.clone().oneshot(bal_b).await.unwrap()).await;
     assert_eq!(bb["data"]["balance"].as_f64().unwrap(), 80.0);
 }
@@ -429,7 +450,9 @@ async fn test_concurrent_debit_protection() {
     let service = Arc::new(LedgerService::new(pool));
 
     // Create account
-    let account = service.create_account("Concurrent Tester".to_string()).unwrap();
+    let account = service
+        .create_account("Concurrent Tester".to_string())
+        .unwrap();
 
     // Credit 100
     service
@@ -470,7 +493,9 @@ async fn test_concurrent_debit_protection() {
         let res = handle.await.unwrap();
         match res {
             Ok(_) => success_count += 1,
-            Err(transaction_ledger_api::error::AppError::InsufficientFunds { .. }) => failure_count += 1,
+            Err(transaction_ledger_api::error::AppError::InsufficientFunds { .. }) => {
+                failure_count += 1
+            }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }

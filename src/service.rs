@@ -23,10 +23,14 @@ impl LedgerService {
     pub fn create_account(&self, name: String) -> Result<Account, AppError> {
         let trimmed_name = name.trim();
         if trimmed_name.is_empty() {
-            return Err(AppError::ValidationError("Account name must not be empty".to_string()));
+            return Err(AppError::ValidationError(
+                "Account name must not be empty".to_string(),
+            ));
         }
         if trimmed_name.len() > 255 {
-            return Err(AppError::ValidationError("Account name must not exceed 255 characters".to_string()));
+            return Err(AppError::ValidationError(
+                "Account name must not exceed 255 characters".to_string(),
+            ));
         }
 
         let account = Account {
@@ -70,15 +74,25 @@ impl LedgerService {
 
         match row {
             Some((id_str, name, balance_str, created_str)) => {
-                let id = Uuid::parse_str(&id_str).map_err(|_| AppError::Internal("Corrupted account UUID".to_string()))?;
-                let balance = Decimal::from_str(&balance_str).map_err(|_| AppError::Internal("Corrupted balance decimal".to_string()))?;
+                let id = Uuid::parse_str(&id_str)
+                    .map_err(|_| AppError::Internal("Corrupted account UUID".to_string()))?;
+                let balance = Decimal::from_str(&balance_str)
+                    .map_err(|_| AppError::Internal("Corrupted balance decimal".to_string()))?;
                 let created_at = chrono::DateTime::parse_from_rfc3339(&created_str)
                     .map_err(|_| AppError::Internal("Corrupted timestamp".to_string()))?
                     .with_timezone(&Utc);
 
-                Ok(Account { id, name, balance, created_at })
+                Ok(Account {
+                    id,
+                    name,
+                    balance,
+                    created_at,
+                })
             }
-            None => Err(AppError::NotFound(format!("Account with ID '{}' not found", id))),
+            None => Err(AppError::NotFound(format!(
+                "Account with ID '{}' not found",
+                id
+            ))),
         }
     }
 
@@ -100,14 +114,22 @@ impl LedgerService {
 
         let mut accounts = Vec::new();
         for r in rows {
-            let (id_str, name, balance_str, created_str) = r.map_err(|e| AppError::Internal(e.to_string()))?;
-            let id = Uuid::parse_str(&id_str).map_err(|_| AppError::Internal("Corrupted account UUID".to_string()))?;
-            let balance = Decimal::from_str(&balance_str).map_err(|_| AppError::Internal("Corrupted balance decimal".to_string()))?;
+            let (id_str, name, balance_str, created_str) =
+                r.map_err(|e| AppError::Internal(e.to_string()))?;
+            let id = Uuid::parse_str(&id_str)
+                .map_err(|_| AppError::Internal("Corrupted account UUID".to_string()))?;
+            let balance = Decimal::from_str(&balance_str)
+                .map_err(|_| AppError::Internal("Corrupted balance decimal".to_string()))?;
             let created_at = chrono::DateTime::parse_from_rfc3339(&created_str)
                 .map_err(|_| AppError::Internal("Corrupted timestamp".to_string()))?
                 .with_timezone(&Utc);
 
-            accounts.push(Account { id, name, balance, created_at });
+            accounts.push(Account {
+                id,
+                name,
+                balance,
+                created_at,
+            });
         }
 
         Ok(accounts)
@@ -120,14 +142,20 @@ impl LedgerService {
     ) -> Result<(Transaction, Decimal), AppError> {
         // Validation
         if req.amount <= Decimal::ZERO {
-            return Err(AppError::ValidationError("Amount must be greater than 0".to_string()));
+            return Err(AppError::ValidationError(
+                "Amount must be greater than 0".to_string(),
+            ));
         }
         if req.amount.scale() > 2 {
-            return Err(AppError::ValidationError("Amount cannot have more than 2 decimal places".to_string()));
+            return Err(AppError::ValidationError(
+                "Amount cannot have more than 2 decimal places".to_string(),
+            ));
         }
         let trimmed_ref = req.reference_id.trim();
         if trimmed_ref.is_empty() {
-            return Err(AppError::ValidationError("reference_id is required".to_string()));
+            return Err(AppError::ValidationError(
+                "reference_id is required".to_string(),
+            ));
         }
 
         let mut conn = self.pool.lock().unwrap();
@@ -142,7 +170,10 @@ impl LedgerService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if !account_exists {
-            return Err(AppError::NotFound(format!("Account with ID '{}' not found", account_id)));
+            return Err(AppError::NotFound(format!(
+                "Account with ID '{}' not found",
+                account_id
+            )));
         }
 
         // 2. Check duplicate reference_id for this account
@@ -249,22 +280,33 @@ impl LedgerService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if !account_exists {
-            return Err(AppError::NotFound(format!("Account with ID '{}' not found", account_id)));
+            return Err(AppError::NotFound(format!(
+                "Account with ID '{}' not found",
+                account_id
+            )));
         }
 
         let page = query.page.unwrap_or(1);
         if page < 1 {
-            return Err(AppError::ValidationError("Page must be greater than or equal to 1".to_string()));
+            return Err(AppError::ValidationError(
+                "Page must be greater than or equal to 1".to_string(),
+            ));
         }
         let limit = query.limit.unwrap_or(10);
-        if limit < 1 || limit > 100 {
-            return Err(AppError::ValidationError("Limit must be between 1 and 100".to_string()));
+        if !(1..=100).contains(&limit) {
+            return Err(AppError::ValidationError(
+                "Limit must be between 1 and 100".to_string(),
+            ));
         }
 
         let tx_type = match query.transaction_type.as_deref() {
             Some(s) => match TransactionType::from_str_opt(s) {
                 Some(t) => Some(t),
-                None => return Err(AppError::ValidationError("Invalid transaction type filter".to_string())),
+                None => {
+                    return Err(AppError::ValidationError(
+                        "Invalid transaction type filter".to_string(),
+                    ))
+                }
             },
             None => None,
         };
@@ -293,11 +335,18 @@ impl LedgerService {
             None => "SELECT id, account_id, type, amount, description, reference_id, created_at FROM transactions WHERE account_id = ?1 ORDER BY created_at DESC, id DESC LIMIT ?2 OFFSET ?3",
         };
 
-        let mut stmt = conn.prepare(query_str).map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut stmt = conn
+            .prepare(query_str)
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let rows = match tx_type {
             Some(t) => stmt.query_map(
-                (account_id.to_string(), t.as_str(), limit as i64, offset as i64),
+                (
+                    account_id.to_string(),
+                    t.as_str(),
+                    limit as i64,
+                    offset as i64,
+                ),
                 Self::map_transaction_row,
             ),
             None => stmt.query_map(
@@ -311,7 +360,7 @@ impl LedgerService {
             transactions.push(r.map_err(|e| AppError::Internal(e.to_string()))?);
         }
 
-        let total_pages = if total == 0 { 1 } else { (total + limit - 1) / limit };
+        let total_pages = if total == 0 { 1 } else { total.div_ceil(limit) };
 
         Ok(PaginatedResponse {
             data: transactions,
@@ -334,8 +383,10 @@ impl LedgerService {
         let created_str: String = row.get(6)?;
 
         let id = Uuid::parse_str(&id_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
-        let account_id = Uuid::parse_str(&account_id_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
-        let transaction_type = TransactionType::from_str_opt(&type_str).ok_or(rusqlite::Error::InvalidQuery)?;
+        let account_id =
+            Uuid::parse_str(&account_id_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
+        let transaction_type =
+            TransactionType::from_str_opt(&type_str).ok_or(rusqlite::Error::InvalidQuery)?;
         let amount = Decimal::from_str(&amount_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
         let created_at = chrono::DateTime::parse_from_rfc3339(&created_str)
             .map_err(|_| rusqlite::Error::InvalidQuery)?
@@ -362,17 +413,25 @@ impl LedgerService {
         } = req;
 
         if source_account_id == destination_account_id {
-            return Err(AppError::ValidationError("Source and destination accounts must be different".to_string()));
+            return Err(AppError::ValidationError(
+                "Source and destination accounts must be different".to_string(),
+            ));
         }
         if amount <= Decimal::ZERO {
-            return Err(AppError::ValidationError("Transfer amount must be greater than 0".to_string()));
+            return Err(AppError::ValidationError(
+                "Transfer amount must be greater than 0".to_string(),
+            ));
         }
         if amount.scale() > 2 {
-            return Err(AppError::ValidationError("Amount cannot have more than 2 decimal places".to_string()));
+            return Err(AppError::ValidationError(
+                "Amount cannot have more than 2 decimal places".to_string(),
+            ));
         }
         let trimmed_ref = reference_id.trim();
         if trimmed_ref.is_empty() {
-            return Err(AppError::ValidationError("reference_id is required".to_string()));
+            return Err(AppError::ValidationError(
+                "reference_id is required".to_string(),
+            ));
         }
 
         let debit_ref = format!("{}_DR", trimmed_ref);
@@ -382,17 +441,31 @@ impl LedgerService {
 
         // 1. Verify existence of both accounts
         let src_exists: bool = conn
-            .query_row("SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?1)", [source_account_id.to_string()], |r| r.get(0))
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?1)",
+                [source_account_id.to_string()],
+                |r| r.get(0),
+            )
             .map_err(|e| AppError::Internal(e.to_string()))?;
         if !src_exists {
-            return Err(AppError::NotFound(format!("Source account with ID '{}' not found", source_account_id)));
+            return Err(AppError::NotFound(format!(
+                "Source account with ID '{}' not found",
+                source_account_id
+            )));
         }
 
         let dst_exists: bool = conn
-            .query_row("SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?1)", [destination_account_id.to_string()], |r| r.get(0))
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?1)",
+                [destination_account_id.to_string()],
+                |r| r.get(0),
+            )
             .map_err(|e| AppError::Internal(e.to_string()))?;
         if !dst_exists {
-            return Err(AppError::NotFound(format!("Destination account with ID '{}' not found", destination_account_id)));
+            return Err(AppError::NotFound(format!(
+                "Destination account with ID '{}' not found",
+                destination_account_id
+            )));
         }
 
         // 2. Check duplicate references
@@ -420,14 +493,23 @@ impl LedgerService {
         ordered_ids.sort();
         for id in &ordered_ids {
             let _: String = tx
-                .query_row("SELECT balance FROM accounts WHERE id = ?1", [id.to_string()], |r| r.get(0))
+                .query_row(
+                    "SELECT balance FROM accounts WHERE id = ?1",
+                    [id.to_string()],
+                    |r| r.get(0),
+                )
                 .map_err(|e| AppError::Internal(e.to_string()))?;
         }
 
         let src_bal_str: String = tx
-            .query_row("SELECT balance FROM accounts WHERE id = ?1", [source_account_id.to_string()], |r| r.get(0))
+            .query_row(
+                "SELECT balance FROM accounts WHERE id = ?1",
+                [source_account_id.to_string()],
+                |r| r.get(0),
+            )
             .map_err(|e| AppError::Internal(e.to_string()))?;
-        let src_balance = Decimal::from_str(&src_bal_str).map_err(|_| AppError::Internal("Corrupted balance".to_string()))?;
+        let src_balance = Decimal::from_str(&src_bal_str)
+            .map_err(|_| AppError::Internal("Corrupted balance".to_string()))?;
 
         if src_balance < amount {
             return Err(AppError::InsufficientFunds {
@@ -437,9 +519,14 @@ impl LedgerService {
         }
 
         let dst_bal_str: String = tx
-            .query_row("SELECT balance FROM accounts WHERE id = ?1", [destination_account_id.to_string()], |r| r.get(0))
+            .query_row(
+                "SELECT balance FROM accounts WHERE id = ?1",
+                [destination_account_id.to_string()],
+                |r| r.get(0),
+            )
             .map_err(|e| AppError::Internal(e.to_string()))?;
-        let dst_balance = Decimal::from_str(&dst_bal_str).map_err(|_| AppError::Internal("Corrupted balance".to_string()))?;
+        let dst_balance = Decimal::from_str(&dst_bal_str)
+            .map_err(|_| AppError::Internal("Corrupted balance".to_string()))?;
 
         let new_src_balance = src_balance - amount;
         let new_dst_balance = dst_balance + amount;
@@ -494,10 +581,19 @@ impl LedgerService {
         ).map_err(|e| AppError::Internal(e.to_string()))?;
 
         // 3. Update balances
-        tx.execute("UPDATE accounts SET balance = ?1 WHERE id = ?2", (new_src_balance.to_string(), source_account_id.to_string()))
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-        tx.execute("UPDATE accounts SET balance = ?1 WHERE id = ?2", (new_dst_balance.to_string(), destination_account_id.to_string()))
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        tx.execute(
+            "UPDATE accounts SET balance = ?1 WHERE id = ?2",
+            (new_src_balance.to_string(), source_account_id.to_string()),
+        )
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+        tx.execute(
+            "UPDATE accounts SET balance = ?1 WHERE id = ?2",
+            (
+                new_dst_balance.to_string(),
+                destination_account_id.to_string(),
+            ),
+        )
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         tx.commit().map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -534,7 +630,8 @@ impl LedgerService {
         let mut ledger_sum = Decimal::ZERO;
         for r in rows {
             let (t_str, a_str) = r.map_err(|e| AppError::Internal(e.to_string()))?;
-            let amount = Decimal::from_str(&a_str).map_err(|_| AppError::Internal("Bad amount decimal".to_string()))?;
+            let amount = Decimal::from_str(&a_str)
+                .map_err(|_| AppError::Internal("Bad amount decimal".to_string()))?;
             match t_str.as_str() {
                 "credit" => ledger_sum += amount,
                 "debit" => ledger_sum -= amount,

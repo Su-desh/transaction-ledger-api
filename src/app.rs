@@ -14,10 +14,19 @@ use crate::service::LedgerService;
 pub fn create_app(service: Arc<LedgerService>) -> Router {
     let api_routes = Router::new()
         .route("/health", get(healthcheck))
-        .route("/accounts", post(account::create_account).get(account::get_all_accounts))
+        .route(
+            "/accounts",
+            post(account::create_account).get(account::get_all_accounts),
+        )
         .route("/accounts/{account_id}", get(account::get_account_by_id))
-        .route("/accounts/{account_id}/balance", get(account::get_account_balance))
-        .route("/accounts/{account_id}/integrity", get(account::verify_integrity))
+        .route(
+            "/accounts/{account_id}/balance",
+            get(account::get_account_balance),
+        )
+        .route(
+            "/accounts/{account_id}/integrity",
+            get(account::verify_integrity),
+        )
         .route(
             "/accounts/{account_id}/transactions",
             post(transaction::add_transaction)
